@@ -31,7 +31,10 @@ background:#111;color:#fff;padding:12px 16px;border-radius:10px}
 <input type="date" id="date">
 <input placeholder="Bill No" id="bill">
 <input list="partyList" placeholder="Party" id="party">
-<select id="location"><option value="">Location</option></select>
+
+<select id="locationSelect">
+  <option value="">Location</option>
+</select>
 
 <input placeholder="No of Rolls" id="rolls">
 <input list="itemList" placeholder="Item" id="item">
@@ -41,7 +44,10 @@ background:#111;color:#fff;padding:12px 16px;border-radius:10px}
 <input placeholder="Weight" id="weight">
 <input placeholder="Rate" id="rate">
 <input placeholder="Total" id="total" readonly>
-<select id="transport"><option value="">Transport</option></select>
+
+<select id="transportSelect">
+  <option value="">Transport</option>
+</select>
 
 <input placeholder="Entry Name" id="entry">
 </div>
@@ -66,12 +72,17 @@ background:#111;color:#fff;padding:12px 16px;border-radius:10px}
 <datalist id="colourList"></datalist>
 
 <script>
-// 🔴 PASTE YOUR WORKER URL HERE
+// 🔴 PASTE YOUR WORKER URL
 const API = "https://bill-update-a82a.rkknitfabsachin.workers.dev";
+
+// DOM refs (NO GLOBAL NAME CLASH)
+const partyInput = document.getElementById("party");
+const locationSelect = document.getElementById("locationSelect");
+const transportSelect = document.getElementById("transportSelect");
 
 let entries = [];
 
-// INIT
+/* INIT */
 fetch(API + "?action=init")
   .then(r => r.text())
   .then(t => JSON.parse(t))
@@ -81,44 +92,48 @@ fetch(API + "?action=init")
     fill("colourList", d.colours);
   });
 
-// UTIL
 function fill(id, arr){
   document.getElementById(id).innerHTML =
-    arr.map(v=>`<option value="${v}">`).join("");
+    arr.map(v => `<option value="${v}">`).join("");
 }
 
-function fillSelect(sel, arr){
-  sel.innerHTML='<option value=""></option>';
+function fillSelect(selectEl, arr){
+  selectEl.innerHTML = '<option value=""></option>';
   arr.forEach(v=>{
-    const o=document.createElement("option");
-    o.value=v; o.textContent=v;
-    sel.appendChild(o);
+    const opt = document.createElement("option");
+    opt.value = v;
+    opt.textContent = v;
+    selectEl.appendChild(opt);
   });
 }
 
-// PARTY CHANGE
-party.addEventListener("change",()=>{
-  fetch(API+"?action=partyDetails&party="+encodeURIComponent(party.value))
-    .then(r=>r.text())
-    .then(t=>JSON.parse(t))
+/* PARTY CHANGE */
+partyInput.addEventListener("change", ()=>{
+  fetch(API+"?action=partyDetails&party="+encodeURIComponent(partyInput.value))
+    .then(r => r.text())
+    .then(t => JSON.parse(t))
     .then(d=>{
-      fillSelect(location,d.locations||[]);
-      fillSelect(transport,d.transports||[]);
+      fillSelect(locationSelect, d.locations || []);
+      fillSelect(transportSelect, d.transports || []);
     });
 });
 
-// TOTAL
-[weight,rate].forEach(i=>i.oninput=()=>{
-  total.value=((+weight.value||0)*(+rate.value||0)).toFixed(2);
+/* TOTAL AUTO */
+["weight","rate"].forEach(id=>{
+  document.getElementById(id).addEventListener("input", ()=>{
+    total.value = (
+      (+weight.value || 0) * (+rate.value || 0)
+    ).toFixed(2);
+  });
 });
 
-// ADD ENTRY
+/* ADD ENTRY */
 function addEntry(){
   entries.push({
     date:date.value,
     bill:bill.value,
-    party:party.value,
-    location:location.value,
+    party:partyInput.value,
+    location:locationSelect.value,
     rolls:rolls.value,
     item:item.value,
     width:width.value,
@@ -126,18 +141,18 @@ function addEntry(){
     colour:colour.value,
     weight:weight.value,
     rate:rate.value,
-    transport:transport.value,
+    transport:transportSelect.value,
     total:total.value,
     entry:entry.value
   });
   render();
 }
 
-// RENDER
+/* RENDER */
 function render(){
   rows.innerHTML="";
   entries.forEach((e,i)=>{
-    rows.innerHTML+=`
+    rows.innerHTML += `
       <tr>
         <td>${e.date}</td>
         <td>${e.bill}</td>
@@ -151,14 +166,14 @@ function render(){
   });
 }
 
-// SAVE ALL
+/* SAVE ALL */
 function saveAll(){
   fetch(API+"?action=saveBulk",{
     method:"POST",
     body:JSON.stringify({rows:entries})
   })
   .then(r=>r.text())
-  .then(()=> {
+  .then(()=>{
     entries=[];
     render();
     showPopup();
@@ -170,7 +185,7 @@ function showPopup(){
   setTimeout(()=>popup.style.display="none",2500);
 }
 
-date.valueAsDate=new Date();
+date.valueAsDate = new Date();
 </script>
 </body>
 </html>
