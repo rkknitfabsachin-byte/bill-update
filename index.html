@@ -2,9 +2,8 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>RK Knit Fab — Entry</title>
+<title>RK Knit Fab — Fabric Entry</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <style>
 body{font-family:Inter,Arial;background:#f4f6fb;margin:0}
 .card{max-width:1000px;margin:16px auto;background:#fff;
@@ -32,9 +31,7 @@ background:#111;color:#fff;padding:12px 16px;border-radius:10px}
 <input placeholder="Bill No" id="bill">
 <input list="partyList" placeholder="Party" id="party">
 
-<select id="locationSelect">
-  <option value="">Location</option>
-</select>
+<select id="locationSelect"><option value="">Location</option></select>
 
 <input placeholder="No of Rolls" id="rolls">
 <input list="itemList" placeholder="Item" id="item">
@@ -45,9 +42,7 @@ background:#111;color:#fff;padding:12px 16px;border-radius:10px}
 <input placeholder="Rate" id="rate">
 <input placeholder="Total" id="total" readonly>
 
-<select id="transportSelect">
-  <option value="">Transport</option>
-</select>
+<select id="transportSelect"><option value="">Transport</option></select>
 
 <input placeholder="Entry Name" id="entry">
 </div>
@@ -75,7 +70,6 @@ background:#111;color:#fff;padding:12px 16px;border-radius:10px}
 // 🔴 PASTE YOUR WORKER URL
 const API = "https://bill-update-a82a.rkknitfabsachin.workers.dev";
 
-// DOM refs (NO GLOBAL NAME CLASH)
 const partyInput = document.getElementById("party");
 const locationSelect = document.getElementById("locationSelect");
 const transportSelect = document.getElementById("transportSelect");
@@ -83,47 +77,44 @@ const transportSelect = document.getElementById("transportSelect");
 let entries = [];
 
 /* INIT */
-fetch(API + "?action=init")
-  .then(r => r.text())
-  .then(t => JSON.parse(t))
-  .then(d => {
-    fill("partyList", d.parties);
-    fill("itemList", d.items);
-    fill("colourList", d.colours);
+fetch(API+"?action=init")
+  .then(r=>r.text())
+  .then(t=>JSON.parse(t))
+  .then(d=>{
+    fill("partyList",d.parties);
+    fill("itemList",d.items);
+    fill("colourList",d.colours);
   });
 
-function fill(id, arr){
+function fill(id,arr){
   document.getElementById(id).innerHTML =
-    arr.map(v => `<option value="${v}">`).join("");
+    arr.map(v=>`<option value="${v}">`).join("");
 }
 
-function fillSelect(selectEl, arr){
-  selectEl.innerHTML = '<option value=""></option>';
+function fillSelect(sel,arr){
+  sel.innerHTML='<option value=""></option>';
   arr.forEach(v=>{
-    const opt = document.createElement("option");
-    opt.value = v;
-    opt.textContent = v;
-    selectEl.appendChild(opt);
+    const o=document.createElement("option");
+    o.value=v; o.textContent=v;
+    sel.appendChild(o);
   });
 }
 
 /* PARTY CHANGE */
-partyInput.addEventListener("change", ()=>{
+partyInput.addEventListener("change",()=>{
   fetch(API+"?action=partyDetails&party="+encodeURIComponent(partyInput.value))
-    .then(r => r.text())
-    .then(t => JSON.parse(t))
+    .then(r=>r.text())
+    .then(t=>JSON.parse(t))
     .then(d=>{
-      fillSelect(locationSelect, d.locations || []);
-      fillSelect(transportSelect, d.transports || []);
+      fillSelect(locationSelect,d.locations||[]);
+      fillSelect(transportSelect,d.transports||[]);
     });
 });
 
-/* TOTAL AUTO */
+/* TOTAL */
 ["weight","rate"].forEach(id=>{
-  document.getElementById(id).addEventListener("input", ()=>{
-    total.value = (
-      (+weight.value || 0) * (+rate.value || 0)
-    ).toFixed(2);
+  document.getElementById(id).addEventListener("input",()=>{
+    total.value=((+weight.value||0)*(+rate.value||0)).toFixed(2);
   });
 });
 
@@ -152,7 +143,7 @@ function addEntry(){
 function render(){
   rows.innerHTML="";
   entries.forEach((e,i)=>{
-    rows.innerHTML += `
+    rows.innerHTML+=`
       <tr>
         <td>${e.date}</td>
         <td>${e.bill}</td>
@@ -176,16 +167,12 @@ function saveAll(){
   .then(()=>{
     entries=[];
     render();
-    showPopup();
+    popup.style.display="block";
+    setTimeout(()=>popup.style.display="none",2500);
   });
 }
 
-function showPopup(){
-  popup.style.display="block";
-  setTimeout(()=>popup.style.display="none",2500);
-}
-
-date.valueAsDate = new Date();
+date.valueAsDate=new Date();
 </script>
 </body>
 </html>
