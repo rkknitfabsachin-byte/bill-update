@@ -2,118 +2,150 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>RK Knit Fab Entry</title>
+<title>RK Knit Fab Bulk Entry</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-body{font-family:Inter,Arial;background:#f6f7fb;margin:0}
-.card{max-width:720px;margin:20px auto;background:#fff;
-padding:20px;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
-h2{text-align:center;margin-bottom:16px}
-input,select{width:100%;padding:12px;margin:6px 0;
-border:1px solid #ddd;border-radius:10px;font-size:15px}
-button{width:100%;padding:14px;border:none;border-radius:12px;
-background:#111;color:#fff;font-size:16px;font-weight:600}
-.total{background:#f1f1f1;font-weight:700}
+body{font-family:Inter;background:#f5f6fa;margin:0}
+.card{max-width:900px;margin:16px auto;background:#fff;
+padding:16px;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+input,select,button{padding:10px;border-radius:8px;border:1px solid #ddd}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+table{width:100%;margin-top:12px;border-collapse:collapse;font-size:13px}
+th,td{border:1px solid #ddd;padding:6px;text-align:center}
+th{background:#f0f0f0}
+.actions{display:flex;gap:10px;margin-top:10px}
+button{background:#111;color:#fff;font-weight:600;cursor:pointer}
+button.secondary{background:#666}
 </style>
 </head>
 
 <body>
 <div class="card">
-<h2>Fabric Entry</h2>
+<h3>Fabric Entry (Bulk)</h3>
 
+<div class="grid">
 <input type="date" id="date">
-<input placeholder="Bill Number" id="bill">
+<input placeholder="Bill No" id="bill">
+<input list="partyList" placeholder="Party" id="party">
+<select id="location"></select>
 
-<input list="partyList" placeholder="Party Name" id="party">
-<datalist id="partyList"></datalist>
-
-<select id="location"><option value="">Location</option></select>
-<select id="transport"><option value="">Transport</option></select>
-
+<input placeholder="Rolls" id="rolls">
 <input list="itemList" placeholder="Item" id="item">
-<datalist id="itemList"></datalist>
-
-<input placeholder="No of Rolls" id="rolls">
 <input placeholder="Width" id="width">
-<input placeholder="Lot No" id="lotno">
-
 <input list="colourList" placeholder="Colour" id="colour">
-<datalist id="colourList"></datalist>
 
 <input placeholder="Weight" id="weight">
 <input placeholder="Rate" id="rate">
-<input class="total" placeholder="Total" id="total" readonly>
+<input placeholder="Total" id="total" readonly>
+<select id="transport"></select>
 
 <input placeholder="Entry Name" id="entry">
-
-<button onclick="save()">SAVE ENTRY</button>
 </div>
+
+<div class="actions">
+<button onclick="addEntry()">ADD ENTRY</button>
+<button class="secondary" onclick="saveAll()">SAVE ALL</button>
+</div>
+
+<table id="preview">
+<thead>
+<tr>
+<th>Date</th><th>Bill</th><th>Party</th><th>Item</th>
+<th>Weight</th><th>Rate</th><th>Total</th><th>❌</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+</div>
+
+<datalist id="partyList"></datalist>
+<datalist id="itemList"></datalist>
+<datalist id="colourList"></datalist>
 
 <script>
 const API = "https://script.google.com/macros/s/AKfycbzta9pGX0sBlyek9m17U96fNrJhrDPz2j8Vi63q6i4-lZX9XHreQ-IS9X51dkBqiwQ/exec";
+let entries = [];
 
-// -------- INIT --------
+// INIT
 fetch(API+"?action=init").then(r=>r.json()).then(d=>{
-  fill("partyList", d.parties);
-  fill("itemList", d.items);
-  fill("colourList", d.colours);
+  fill("partyList",d.parties);
+  fill("itemList",d.items);
+  fill("colourList",d.colours);
 });
 
-function fill(id, arr){
+function fill(id,arr){
   document.getElementById(id).innerHTML =
     arr.map(v=>`<option value="${v}">`).join("");
 }
 
-// -------- PARTY CHANGE --------
+// PARTY CHANGE
 party.onchange = ()=>{
   fetch(API+"?action=partyDetails&party="+encodeURIComponent(party.value))
   .then(r=>r.json()).then(d=>{
-    setSelect(location,d.locations);
-    setSelect(transport,d.transports);
+    fillSelect(location,d.locations);
+    fillSelect(transport,d.transports);
   });
 };
 
-function setSelect(el, arr){
-  el.innerHTML = "<option></option>";
+function fillSelect(el,arr){
+  el.innerHTML="";
   arr.forEach(v=>{
     let o=document.createElement("option");
-    o.value=v; el.appendChild(o);
+    o.text=v; el.add(o);
   });
 }
 
-// -------- TOTAL AUTO --------
+// TOTAL
 [weight,rate].forEach(i=>i.oninput=()=>{
-  total.value = (Number(weight.value||0)*Number(rate.value||0)).toFixed(2);
+  total.value=(+weight.value||0)*(+rate.value||0);
 });
 
-// -------- SAVE --------
-function save(){
-  fetch(API+"?action=save",{
+// ADD ENTRY
+function addEntry(){
+  const e={
+    date:date.value,bill:bill.value,party:party.value,
+    location:location.value,rolls:rolls.value,item:item.value,
+    width:width.value,colour:colour.value,
+    weight:weight.value,rate:rate.value,
+    transport:transport.value,total:total.value,
+    entry:entry.value
+  };
+  entries.push(e);
+  render();
+}
+
+// RENDER
+function render(){
+  const tb=document.querySelector("#preview tbody");
+  tb.innerHTML="";
+  entries.forEach((e,i)=>{
+    tb.innerHTML+=`
+    <tr>
+      <td>${e.date}</td><td>${e.bill}</td><td>${e.party}</td>
+      <td>${e.item}</td><td>${e.weight}</td>
+      <td>${e.rate}</td><td>${e.total}</td>
+      <td onclick="remove(${i})">❌</td>
+    </tr>`;
+  });
+}
+
+function remove(i){
+  entries.splice(i,1); render();
+}
+
+// SAVE ALL
+function saveAll(){
+  fetch(API+"?action=saveBulk",{
     method:"POST",
-    body:JSON.stringify({
-      date:date.value,
-      bill:bill.value,
-      party:party.value,
-      location:location.value,
-      rolls:rolls.value,
-      item:item.value,
-      width:width.value,
-      lotno:lotno.value,
-      colour:colour.value,
-      weight:weight.value,
-      rate:rate.value,
-      transport:transport.value,
-      total:total.value,
-      entry:entry.value
-    })
-  }).then(r=>r.json()).then(()=>{
-    alert("Saved ✔");
-    document.querySelectorAll("input").forEach(i=>i.value="");
+    body:JSON.stringify({rows:entries})
+  }).then(r=>r.json()).then(r=>{
+    alert("Saved "+r.count+" entries");
+    entries=[]; render();
   });
 }
 
 // default date
-date.valueAsDate = new Date();
+date.valueAsDate=new Date();
 </script>
 </body>
 </html>
