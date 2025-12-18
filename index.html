@@ -2,32 +2,34 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>RK Knit Fab Bulk Entry</title>
+<title>RK Knit Fab Entry</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-body{font-family:Inter;background:#f5f6fa;margin:0}
-.card{max-width:900px;margin:16px auto;background:#fff;
+body{font-family:Inter;background:#f4f6fb;margin:0}
+.card{max-width:950px;margin:16px auto;background:#fff;
 padding:16px;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 input,select,button{padding:10px;border-radius:8px;border:1px solid #ddd}
-.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+button{background:#111;color:#fff;font-weight:600;cursor:pointer}
 table{width:100%;margin-top:12px;border-collapse:collapse;font-size:13px}
 th,td{border:1px solid #ddd;padding:6px;text-align:center}
-th{background:#f0f0f0}
-.actions{display:flex;gap:10px;margin-top:10px}
-button{background:#111;color:#fff;font-weight:600;cursor:pointer}
-button.secondary{background:#666}
+th{background:#f1f1f1}
+.popup{display:none;position:fixed;top:20px;right:20px;
+background:#111;color:#fff;padding:12px 16px;border-radius:10px}
 </style>
 </head>
 
 <body>
+<div class="popup" id="popup">Entries saved successfully ✔</div>
+
 <div class="card">
-<h3>Fabric Entry (Bulk)</h3>
+<h3>Fabric Entry</h3>
 
 <div class="grid">
 <input type="date" id="date">
 <input placeholder="Bill No" id="bill">
 <input list="partyList" placeholder="Party" id="party">
-<select id="location"></select>
+<select id="location"><option value="">Location</option></select>
 
 <input placeholder="Rolls" id="rolls">
 <input list="itemList" placeholder="Item" id="item">
@@ -37,24 +39,23 @@ button.secondary{background:#666}
 <input placeholder="Weight" id="weight">
 <input placeholder="Rate" id="rate">
 <input placeholder="Total" id="total" readonly>
-<select id="transport"></select>
+<select id="transport"><option value="">Transport</option></select>
 
 <input placeholder="Entry Name" id="entry">
 </div>
 
-<div class="actions">
-<button onclick="addEntry()">ADD ENTRY</button>
-<button class="secondary" onclick="saveAll()">SAVE ALL</button>
-</div>
+<br>
+<button onclick="addEntry()">Add Entry</button>
+<button onclick="saveAll()">Save All</button>
 
-<table id="preview">
+<table>
 <thead>
 <tr>
 <th>Date</th><th>Bill</th><th>Party</th><th>Item</th>
 <th>Weight</th><th>Rate</th><th>Total</th><th>❌</th>
 </tr>
 </thead>
-<tbody></tbody>
+<tbody id="rows"></tbody>
 </table>
 </div>
 
@@ -66,7 +67,6 @@ button.secondary{background:#666}
 const API = "https://bill-update-a82a.rkknitfabsachin.workers.dev/";
 let entries = [];
 
-// INIT
 fetch(API+"?action=init").then(r=>r.json()).then(d=>{
   fill("partyList",d.parties);
   fill("itemList",d.items);
@@ -78,7 +78,6 @@ function fill(id,arr){
     arr.map(v=>`<option value="${v}">`).join("");
 }
 
-// PARTY CHANGE
 party.onchange = ()=>{
   fetch(API+"?action=partyDetails&party="+encodeURIComponent(party.value))
   .then(r=>r.json()).then(d=>{
@@ -87,64 +86,61 @@ party.onchange = ()=>{
   });
 };
 
-function fillSelect(el,arr){
-  el.innerHTML="";
+function fillSelect(sel,arr){
+  sel.innerHTML='<option value=""></option>';
   arr.forEach(v=>{
-    let o=document.createElement("option");
-    o.text=v; el.add(o);
+    const o=document.createElement("option");
+    o.value=v; o.textContent=v;
+    sel.appendChild(o);
   });
 }
 
-// TOTAL
 [weight,rate].forEach(i=>i.oninput=()=>{
-  total.value=(+weight.value||0)*(+rate.value||0);
+  total.value=((+weight.value||0)*(+rate.value||0)).toFixed(2);
 });
 
-// ADD ENTRY
 function addEntry(){
-  const e={
+  entries.push({
     date:date.value,bill:bill.value,party:party.value,
     location:location.value,rolls:rolls.value,item:item.value,
-    width:width.value,colour:colour.value,
-    weight:weight.value,rate:rate.value,
-    transport:transport.value,total:total.value,
-    entry:entry.value
-  };
-  entries.push(e);
+    width:width.value,lotno:"",
+    colour:colour.value,weight:weight.value,
+    rate:rate.value,transport:transport.value,
+    total:total.value,entry:entry.value
+  });
   render();
 }
 
-// RENDER
 function render(){
-  const tb=document.querySelector("#preview tbody");
-  tb.innerHTML="";
+  rows.innerHTML="";
   entries.forEach((e,i)=>{
-    tb.innerHTML+=`
+    rows.innerHTML+=`
     <tr>
       <td>${e.date}</td><td>${e.bill}</td><td>${e.party}</td>
       <td>${e.item}</td><td>${e.weight}</td>
       <td>${e.rate}</td><td>${e.total}</td>
-      <td onclick="remove(${i})">❌</td>
+      <td onclick="entries.splice(${i},1);render()">❌</td>
     </tr>`;
   });
 }
 
-function remove(i){
-  entries.splice(i,1); render();
-}
-
-// SAVE ALL
 function saveAll(){
   fetch(API+"?action=saveBulk",{
     method:"POST",
     body:JSON.stringify({rows:entries})
-  }).then(r=>r.json()).then(r=>{
-    alert("Saved "+r.count+" entries");
-    entries=[]; render();
+  }).then(r=>r.json()).then(()=>{
+    entries=[];
+    render();
+    showPopup();
   });
 }
 
-// default date
+function showPopup(){
+  const p=document.getElementById("popup");
+  p.style.display="block";
+  setTimeout(()=>p.style.display="none",2500);
+}
+
 date.valueAsDate=new Date();
 </script>
 </body>
