@@ -6,34 +6,33 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-body{font-family:Inter,Arial;background:#f4f6fb;margin:0}
-nav{display:flex;gap:10px;padding:12px;background:#111}
-nav button{flex:1;padding:12px;border:none;border-radius:10px;
-background:#333;color:#fff;font-weight:600}
+body{font-family:system-ui;background:#f4f6fb;margin:0}
+nav{display:flex;gap:8px;padding:10px;background:#111}
+nav button{
+  flex:1;padding:10px;border:none;border-radius:8px;
+  background:#333;color:#fff;font-weight:600
+}
 nav button.active{background:#fff;color:#111}
 
-.card{max-width:1300px;margin:16px auto;background:#fff;
-padding:16px;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+.card{
+  max-width:1400px;margin:12px auto;background:#fff;
+  padding:14px;border-radius:14px
+}
 
-.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.filters{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.filters{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
 
 input,select,button{
-  padding:10px;border-radius:8px;border:1px solid #ccc
+  padding:8px;border-radius:6px;border:1px solid #ccc;
+  font-size:13px
 }
-
-button.primary{background:#111;color:#fff;font-weight:600}
+button.primary{background:#111;color:#fff}
 button.secondary{background:#666;color:#fff}
 
-table{width:100%;margin-top:14px;border-collapse:collapse;font-size:13px}
-th,td{border:1px solid #ddd;padding:6px;text-align:center}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}
+th,td{border:1px solid #ddd;padding:5px;text-align:center}
 th{background:#f1f1f1}
 td input{width:100%;border:none;background:transparent;text-align:center}
-
-.popup{
-  display:none;position:fixed;top:20px;right:20px;
-  background:#111;color:#fff;padding:12px 16px;border-radius:10px
-}
 
 .hidden{display:none}
 
@@ -53,41 +52,39 @@ td input{width:100%;border:none;background:transparent;text-align:center}
   <button id="tabReports" onclick="showTab('reports')">📊 Reports</button>
 </nav>
 
-<div class="popup" id="popup">Saved successfully ✔</div>
-
 <!-- ENTRY TAB -->
 <div class="card" id="entryTab">
-<h3>Fabric Entry</h3>
+<h3>New Entry</h3>
 
 <div class="grid">
 <input type="date" id="date">
 <input placeholder="Bill No" id="bill">
-<input list="partyList" placeholder="Party" id="party">
-<select id="location"><option value="">Location</option></select>
+<input placeholder="Party" id="party">
+<input placeholder="Location" id="location">
 
-<input placeholder="No of Rolls" id="rolls">
-<input list="itemList" placeholder="Item" id="item">
+<input placeholder="Rolls" id="rolls">
+<input placeholder="Item" id="item">
 <input placeholder="Width" id="width">
 <input placeholder="Lot No" id="lotno">
 
-<input list="colourList" placeholder="Colour" id="colour">
+<input placeholder="Colour" id="colour">
 <input placeholder="Weight" id="weight">
 <input placeholder="Rate" id="rate">
 <input placeholder="Total" id="total" readonly>
 
-<select id="transport"><option value="">Transport</option></select>
+<input placeholder="Transport" id="transport">
 <input placeholder="Entry Name" id="entryName">
 </div>
 
 <br>
-<button class="primary" onclick="addEntry()">Add Entry</button>
+<button class="primary" onclick="addEntry()">Add</button>
 <button class="secondary" onclick="saveAll()">Save All</button>
 
 <table>
 <thead>
 <tr>
 <th>Date</th><th>Bill</th><th>Party</th><th>Item</th>
-<th>Lot</th><th>Weight</th><th>Total</th><th>✏️</th><th>❌</th>
+<th>Lot</th><th>Weight</th><th>Total</th><th>❌</th>
 </tr>
 </thead>
 <tbody id="entryRows"></tbody>
@@ -96,14 +93,16 @@ td input{width:100%;border:none;background:transparent;text-align:center}
 
 <!-- REPORTS TAB -->
 <div class="card hidden" id="reportsTab">
-<h3>All Entries Report</h3>
+<h3>Reports (Fast)</h3>
 
 <div class="filters">
 <input type="date" id="from">
 <input type="date" id="to">
-<input placeholder="Party filter" id="partyFilter">
-<input placeholder="Item filter" id="itemFilter">
-<button class="primary" onclick="loadReports()">Apply</button>
+<input placeholder="Party" id="fParty">
+<input placeholder="Location" id="fLocation">
+<input placeholder="Item" id="fItem">
+<input placeholder="Lot No" id="fLot">
+<button class="primary" onclick="loadReports(true)">Search</button>
 </div>
 
 <table>
@@ -116,75 +115,46 @@ td input{width:100%;border:none;background:transparent;text-align:center}
 </thead>
 <tbody id="reportRows"></tbody>
 </table>
-</div>
 
-<datalist id="partyList"></datalist>
-<datalist id="itemList"></datalist>
-<datalist id="colourList"></datalist>
+<br>
+<button onclick="loadReports()">Load More</button>
+</div>
 
 <script>
 const API = "https://bill-update-a82a.rkknitfabsachin.workers.dev";
 
-let entries = [];
-let reportCache = [];
-
-/* TAB SWITCH */
+/* ---------- TAB ---------- */
 function showTab(t){
   entryTab.classList.toggle("hidden", t!=="entry");
   reportsTab.classList.toggle("hidden", t!=="reports");
   tabEntry.classList.toggle("active", t==="entry");
   tabReports.classList.toggle("active", t==="reports");
-  if(t==="reports") loadReports();
 }
 
-/* INIT */
-fetch(API+"?action=init")
-  .then(r=>r.json())
-  .then(d=>{
-    fill("partyList",d.parties);
-    fill("itemList",d.items);
-    fill("colourList",d.colours);
-  });
+/* ---------- ENTRY ---------- */
+let entries = [];
 
-function fill(id,arr){
-  document.getElementById(id).innerHTML =
-    arr.map(v=>`<option value="${v}">`).join("");
-}
-
-/* PARTY CHANGE */
-party.addEventListener("change",()=>{
-  fetch(API+"?action=partyDetails&party="+encodeURIComponent(party.value))
-    .then(r=>r.json())
-    .then(d=>{
-      fillSelect(location,d.locations);
-      fillSelect(transport,d.transports);
-    });
-});
-
-function fillSelect(sel,arr){
-  sel.innerHTML="<option value=''></option>";
-  arr.forEach(v=>{
-    const o=document.createElement("option");
-    o.value=v;o.textContent=v;
-    sel.appendChild(o);
-  });
-}
-
-/* TOTAL AUTO */
 ["weight","rate"].forEach(id=>{
   document.getElementById(id).addEventListener("input",()=>{
     total.value=((+weight.value||0)*(+rate.value||0)).toFixed(2);
   });
 });
 
-/* ENTRY */
 function readForm(){
   return {
-    date:date.value,bill:bill.value,party:party.value,
-    location:location.value,rolls:rolls.value,
-    item:item.value,width:width.value,lotno:lotno.value,
-    colour:colour.value,weight:weight.value,rate:rate.value,
-    transport:transport.value,total:total.value,
+    date:date.value,
+    bill:bill.value,
+    party:party.value,
+    location:location.value,
+    rolls:rolls.value,
+    item:item.value,
+    width:width.value,
+    lotno:lotno.value,
+    colour:colour.value,
+    weight:weight.value,
+    rate:rate.value,
+    transport:transport.value,
+    total:total.value,
     entry:entryName.value
   };
 }
@@ -202,77 +172,68 @@ function renderEntries(){
       <td>${e.date}</td><td>${e.bill}</td><td>${e.party}</td>
       <td>${e.item}</td><td>${e.lotno}</td>
       <td>${e.weight}</td><td>${e.total}</td>
-      <td onclick="editTemp(${i})">✏️</td>
       <td onclick="entries.splice(${i},1);renderEntries()">❌</td>
     </tr>`;
   });
 }
 
-function editTemp(i){
-  const e=entries[i];
-  Object.assign({date,bill,party,rolls,item,width,lotno,colour,weight,rate,total,entryName},{
-    value:null
-  });
-  date.value=e.date;bill.value=e.bill;party.value=e.party;
-  rolls.value=e.rolls;item.value=e.item;width.value=e.width;
-  lotno.value=e.lotno;colour.value=e.colour;
-  weight.value=e.weight;rate.value=e.rate;
-  total.value=e.total;entryName.value=e.entry;
-}
-
-/* SAVE */
 function saveAll(){
-  fetch(API+"?action=saveBulk",{
+  fetch(API+"?action=savebulk",{
     method:"POST",
     body:JSON.stringify({rows:entries})
   }).then(()=>{
     entries=[];
     renderEntries();
-    popup.style.display="block";
-    setTimeout(()=>popup.style.display="none",2000);
+    alert("Saved");
   });
 }
 
-/* REPORTS */
-function loadReports(){
-  fetch(API+`?action=getReports&from=${from.value}&to=${to.value}`)
+/* ---------- REPORTS ---------- */
+let offset = 0;
+const LIMIT = 50;
+
+function loadReports(reset=false){
+  if(reset){
+    offset=0;
+    reportRows.innerHTML="";
+  }
+
+  const q =
+    `?action=getreports` +
+    `&from=${from.value}&to=${to.value}` +
+    `&party=${fParty.value}` +
+    `&location=${fLocation.value}` +
+    `&item=${fItem.value}` +
+    `&lotno=${fLot.value}` +
+    `&limit=${LIMIT}&offset=${offset}`;
+
+  fetch(API+q)
     .then(r=>r.json())
     .then(d=>{
-      reportCache=d;
-      renderReports();
+      d.rows.forEach(r=>{
+        reportRows.innerHTML+=`
+        <tr>
+          <td><input value="${r.date.split('T')[0]}" onchange="edit(${r.row},'date',this.value)"></td>
+          <td><input value="${r.bill}" onchange="edit(${r.row},'bill',this.value)"></td>
+          <td><input value="${r.party}" onchange="edit(${r.row},'party',this.value)"></td>
+          <td><input value="${r.location}" onchange="edit(${r.row},'location',this.value)"></td>
+          <td><input value="${r.item}" onchange="edit(${r.row},'item',this.value)"></td>
+          <td><input value="${r.lotno}" onchange="edit(${r.row},'lotno',this.value)"></td>
+          <td><input value="${r.weight}" onchange="edit(${r.row},'weight',this.value)"></td>
+          <td><input value="${r.rate}" onchange="edit(${r.row},'rate',this.value)"></td>
+          <td>${r.total}</td>
+          <td><input value="${r.transport}" onchange="edit(${r.row},'transport',this.value)"></td>
+        </tr>`;
+      });
+      offset += d.rows.length;
     });
 }
 
-function renderReports(){
-  reportRows.innerHTML="";
-  reportCache
-    .filter(r=>{
-      if(partyFilter.value && !r.party.toLowerCase().includes(partyFilter.value.toLowerCase())) return false;
-      if(itemFilter.value && !r.item.toLowerCase().includes(itemFilter.value.toLowerCase())) return false;
-      return true;
-    })
-    .forEach(r=>{
-      reportRows.innerHTML+=`
-      <tr>
-        <td><input value="${r.date.split('T')[0]}" onchange="update(${r.row},'date',this.value)"></td>
-        <td><input value="${r.bill}" onchange="update(${r.row},'bill',this.value)"></td>
-        <td><input value="${r.party}" onchange="update(${r.row},'party',this.value)"></td>
-        <td><input value="${r.location}" onchange="update(${r.row},'location',this.value)"></td>
-        <td><input value="${r.item}" onchange="update(${r.row},'item',this.value)"></td>
-        <td><input value="${r.lotno}" onchange="update(${r.row},'lotno',this.value)"></td>
-        <td><input value="${r.weight}" onchange="update(${r.row},'weight',this.value)"></td>
-        <td><input value="${r.rate}" onchange="update(${r.row},'rate',this.value)"></td>
-        <td>${r.total}</td>
-        <td><input value="${r.transport}" onchange="update(${r.row},'transport',this.value)"></td>
-      </tr>`;
-    });
-}
-
-function update(row,field,value){
-  const r=reportCache.find(x=>x.row===row);
-  r[field]=value;
-  r.total=(r.weight*r.rate).toFixed(2);
-  fetch(API+"?action=updateReport",{method:"POST",body:JSON.stringify(r)});
+function edit(row,field,value){
+  fetch(API+"?action=updatereport",{
+    method:"POST",
+    body:JSON.stringify({row,[field]:value})
+  });
 }
 
 date.valueAsDate=new Date();
