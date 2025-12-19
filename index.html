@@ -2,237 +2,199 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>RK Knit Fab — Entry & Reports</title>
+<title>RK Knit Fab — Entry</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
 body{font-family:system-ui;background:#f4f6fb;margin:0}
-nav{display:flex;gap:8px;padding:10px;background:#111}
-nav button{
-  flex:1;padding:10px;border:none;border-radius:8px;
-  background:#333;color:#fff;font-weight:600
-}
-nav button.active{background:#fff;color:#111}
-
-.card{
-  max-width:1400px;margin:12px auto;background:#fff;
-  padding:14px;border-radius:14px
-}
-
+.card{max-width:1200px;margin:14px auto;background:#fff;
+padding:16px;border-radius:14px}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.filters{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
-
 input,select,button{
-  padding:8px;border-radius:6px;border:1px solid #ccc;
-  font-size:13px
+  padding:9px;border-radius:7px;border:1px solid #ccc;font-size:13px
 }
-button.primary{background:#111;color:#fff}
-button.secondary{background:#666;color:#fff}
-
-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}
-th,td{border:1px solid #ddd;padding:5px;text-align:center}
+button{background:#111;color:#fff;font-weight:600}
+table{width:100%;margin-top:12px;border-collapse:collapse;font-size:12px}
+th,td{border:1px solid #ddd;padding:6px;text-align:center}
 th{background:#f1f1f1}
-td input{width:100%;border:none;background:transparent;text-align:center}
-
-.hidden{display:none}
-
-@media(max-width:900px){
-  .grid,.filters{grid-template-columns:repeat(2,1fr)}
-}
-@media(max-width:520px){
-  .grid,.filters{grid-template-columns:1fr}
-}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.grid{grid-template-columns:1fr}}
 </style>
 </head>
 
 <body>
-
-<nav>
-  <button id="tabEntry" class="active" onclick="showTab('entry')">➕ Entry</button>
-  <button id="tabReports" onclick="showTab('reports')">📊 Reports</button>
-</nav>
-
-<!-- ENTRY TAB -->
-<div class="card" id="entryTab">
-<h3>New Entry</h3>
+<div class="card">
+<h3>Fabric Entry</h3>
 
 <div class="grid">
 <input type="date" id="date">
 <input placeholder="Bill No" id="bill">
-<input placeholder="Party" id="party">
-<input placeholder="Location" id="location">
 
-<input placeholder="Rolls" id="rolls">
-<input placeholder="Item" id="item">
+<input list="partyList" placeholder="Party" id="party">
+<select id="location"><option value="">Location</option></select>
+
+<input placeholder="No of Rolls" id="rolls">
+<input list="itemList" placeholder="Item" id="item">
+
 <input placeholder="Width" id="width">
 <input placeholder="Lot No" id="lotno">
 
-<input placeholder="Colour" id="colour">
+<input list="colourList" placeholder="Colour" id="colour">
 <input placeholder="Weight" id="weight">
 <input placeholder="Rate" id="rate">
 <input placeholder="Total" id="total" readonly>
 
-<input placeholder="Transport" id="transport">
+<select id="transport"><option value="">Transport</option></select>
 <input placeholder="Entry Name" id="entryName">
 </div>
 
 <br>
-<button class="primary" onclick="addEntry()">Add</button>
-<button class="secondary" onclick="saveAll()">Save All</button>
+<button onclick="addEntry()">Add Entry</button>
+<button onclick="saveAll()">Save All</button>
 
 <table>
 <thead>
 <tr>
 <th>Date</th><th>Bill</th><th>Party</th><th>Item</th>
-<th>Lot</th><th>Weight</th><th>Total</th><th>❌</th>
+<th>Lot</th><th>Weight</th><th>Total</th>
+<th>✏️</th><th>📄</th><th>❌</th>
 </tr>
 </thead>
-<tbody id="entryRows"></tbody>
+<tbody id="rows"></tbody>
 </table>
 </div>
 
-<!-- REPORTS TAB -->
-<div class="card hidden" id="reportsTab">
-<h3>Reports (Fast)</h3>
-
-<div class="filters">
-<input type="date" id="from">
-<input type="date" id="to">
-<input placeholder="Party" id="fParty">
-<input placeholder="Location" id="fLocation">
-<input placeholder="Item" id="fItem">
-<input placeholder="Lot No" id="fLot">
-<button class="primary" onclick="loadReports(true)">Search</button>
-</div>
-
-<table>
-<thead>
-<tr>
-<th>Date</th><th>Bill</th><th>Party</th><th>Location</th>
-<th>Item</th><th>Lot</th><th>Weight</th>
-<th>Rate</th><th>Total</th><th>Transport</th>
-</tr>
-</thead>
-<tbody id="reportRows"></tbody>
-</table>
-
-<br>
-<button onclick="loadReports()">Load More</button>
-</div>
+<datalist id="partyList"></datalist>
+<datalist id="itemList"></datalist>
+<datalist id="colourList"></datalist>
 
 <script>
 const API = "https://bill-update-a82a.rkknitfabsachin.workers.dev";
 
-/* ---------- TAB ---------- */
-function showTab(t){
-  entryTab.classList.toggle("hidden", t!=="entry");
-  reportsTab.classList.toggle("hidden", t!=="reports");
-  tabEntry.classList.toggle("active", t==="entry");
-  tabReports.classList.toggle("active", t==="reports");
+let entries = [];
+let editIndex = null;
+
+/* INIT */
+fetch(API+"?action=init")
+  .then(r=>r.json())
+  .then(d=>{
+    fill("partyList",d.parties);
+    fill("itemList",d.items);
+    fill("colourList",d.colours);
+  });
+
+function fill(id,arr){
+  document.getElementById(id).innerHTML =
+    arr.map(v=>`<option value="${v}">`).join("");
 }
 
-/* ---------- ENTRY ---------- */
-let entries = [];
+/* PARTY CHANGE */
+party.addEventListener("change",()=>{
+  fetch(API+"?action=partydetails&party="+encodeURIComponent(party.value))
+    .then(r=>r.json())
+    .then(d=>{
+      fillSelect(location,d.locations);
+      fillSelect(transport,d.transports);
+    });
+});
 
+function fillSelect(sel,arr){
+  sel.innerHTML="<option value=''></option>";
+  arr.forEach(v=>{
+    const o=document.createElement("option");
+    o.value=v;o.textContent=v;
+    sel.appendChild(o);
+  });
+}
+
+/* TOTAL AUTO */
 ["weight","rate"].forEach(id=>{
   document.getElementById(id).addEventListener("input",()=>{
     total.value=((+weight.value||0)*(+rate.value||0)).toFixed(2);
   });
 });
 
+/* FORM DATA */
 function readForm(){
   return {
-    date:date.value,
-    bill:bill.value,
-    party:party.value,
-    location:location.value,
-    rolls:rolls.value,
-    item:item.value,
-    width:width.value,
-    lotno:lotno.value,
-    colour:colour.value,
-    weight:weight.value,
-    rate:rate.value,
-    transport:transport.value,
-    total:total.value,
+    date:date.value,bill:bill.value,party:party.value,
+    location:location.value,rolls:rolls.value,
+    item:item.value,width:width.value,lotno:lotno.value,
+    colour:colour.value,weight:weight.value,rate:rate.value,
+    transport:transport.value,total:total.value,
     entry:entryName.value
   };
 }
 
+/* ADD / UPDATE */
 function addEntry(){
-  entries.push(readForm());
-  renderEntries();
+  if(editIndex===null){
+    entries.push(readForm());
+  }else{
+    entries[editIndex]=readForm();
+    editIndex=null;
+  }
+  clearForm();
+  render();
 }
 
-function renderEntries(){
-  entryRows.innerHTML="";
+/* EDIT */
+function editRow(i){
+  const e=entries[i];
+  editIndex=i;
+  date.value=e.date;bill.value=e.bill;party.value=e.party;
+  rolls.value=e.rolls;item.value=e.item;width.value=e.width;
+  lotno.value=e.lotno;colour.value=e.colour;
+  weight.value=e.weight;rate.value=e.rate;
+  total.value=e.total;entryName.value=e.entry;
+
+  fetch(API+"?action=partydetails&party="+encodeURIComponent(e.party))
+    .then(r=>r.json())
+    .then(d=>{
+      fillSelect(location,d.locations);
+      fillSelect(transport,d.transports);
+      location.value=e.location;
+      transport.value=e.transport;
+    });
+}
+
+/* DUPLICATE */
+function duplicateRow(i){
+  entries.push(JSON.parse(JSON.stringify(entries[i])));
+  render();
+}
+
+/* RENDER */
+function render(){
+  rows.innerHTML="";
   entries.forEach((e,i)=>{
-    entryRows.innerHTML+=`
+    rows.innerHTML+=`
     <tr>
       <td>${e.date}</td><td>${e.bill}</td><td>${e.party}</td>
       <td>${e.item}</td><td>${e.lotno}</td>
       <td>${e.weight}</td><td>${e.total}</td>
-      <td onclick="entries.splice(${i},1);renderEntries()">❌</td>
+      <td onclick="editRow(${i})">✏️</td>
+      <td onclick="duplicateRow(${i})">📄</td>
+      <td onclick="entries.splice(${i},1);render()">❌</td>
     </tr>`;
   });
 }
 
+/* SAVE */
 function saveAll(){
   fetch(API+"?action=savebulk",{
     method:"POST",
     body:JSON.stringify({rows:entries})
   }).then(()=>{
     entries=[];
-    renderEntries();
-    alert("Saved");
+    render();
+    alert("Entries saved successfully");
   });
 }
 
-/* ---------- REPORTS ---------- */
-let offset = 0;
-const LIMIT = 50;
-
-function loadReports(reset=false){
-  if(reset){
-    offset=0;
-    reportRows.innerHTML="";
-  }
-
-  const q =
-    `?action=getreports` +
-    `&from=${from.value}&to=${to.value}` +
-    `&party=${fParty.value}` +
-    `&location=${fLocation.value}` +
-    `&item=${fItem.value}` +
-    `&lotno=${fLot.value}` +
-    `&limit=${LIMIT}&offset=${offset}`;
-
-  fetch(API+q)
-    .then(r=>r.json())
-    .then(d=>{
-      d.rows.forEach(r=>{
-        reportRows.innerHTML+=`
-        <tr>
-          <td><input value="${r.date.split('T')[0]}" onchange="edit(${r.row},'date',this.value)"></td>
-          <td><input value="${r.bill}" onchange="edit(${r.row},'bill',this.value)"></td>
-          <td><input value="${r.party}" onchange="edit(${r.row},'party',this.value)"></td>
-          <td><input value="${r.location}" onchange="edit(${r.row},'location',this.value)"></td>
-          <td><input value="${r.item}" onchange="edit(${r.row},'item',this.value)"></td>
-          <td><input value="${r.lotno}" onchange="edit(${r.row},'lotno',this.value)"></td>
-          <td><input value="${r.weight}" onchange="edit(${r.row},'weight',this.value)"></td>
-          <td><input value="${r.rate}" onchange="edit(${r.row},'rate',this.value)"></td>
-          <td>${r.total}</td>
-          <td><input value="${r.transport}" onchange="edit(${r.row},'transport',this.value)"></td>
-        </tr>`;
-      });
-      offset += d.rows.length;
-    });
-}
-
-function edit(row,field,value){
-  fetch(API+"?action=updatereport",{
-    method:"POST",
-    body:JSON.stringify({row,[field]:value})
+function clearForm(){
+  document.querySelectorAll("input").forEach(i=>{
+    if(i.type!=="date") i.value="";
   });
 }
 
