@@ -2,13 +2,12 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>RK Knit Fab — Entry</title>
+<title>RK Knit Fab — Fabric Entry</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
 body{font-family:system-ui;background:#f4f6fb;margin:0}
-.card{max-width:1200px;margin:14px auto;background:#fff;
-padding:16px;border-radius:14px}
+.card{max-width:1200px;margin:14px auto;background:#fff;padding:16px;border-radius:14px}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 input,select,button{
   padding:9px;border-radius:7px;border:1px solid #ccc;font-size:13px
@@ -31,7 +30,7 @@ th{background:#f1f1f1}
 <input placeholder="Bill No" id="bill">
 
 <input list="partyList" placeholder="Party" id="party">
-<select id="location"><option value="">Location</option></select>
+<select id="location"><option>Location</option></select>
 
 <input placeholder="No of Rolls" id="rolls">
 <input list="itemList" placeholder="Item" id="item">
@@ -44,7 +43,7 @@ th{background:#f1f1f1}
 <input placeholder="Rate" id="rate">
 <input placeholder="Total" id="total" readonly>
 
-<select id="transport"><option value="">Transport</option></select>
+<select id="transport"><option>Transport</option></select>
 <input placeholder="Entry Name" id="entryName">
 </div>
 
@@ -71,35 +70,49 @@ th{background:#f1f1f1}
 <script>
 const API = "https://bill-update-a82a.rkknitfabsachin.workers.dev";
 
+const partyInput     = document.getElementById("party");
+const locationSelect = document.getElementById("location");
+const transportSelect= document.getElementById("transport");
+
 let entries = [];
 let editIndex = null;
 
-/* INIT */
+/******** INIT ********/
 fetch(API+"?action=init")
   .then(r=>r.json())
   .then(d=>{
-    fill("partyList",d.parties);
-    fill("itemList",d.items);
-    fill("colourList",d.colours);
+    fillList("partyList",d.parties);
+    fillList("itemList",d.items);
+    fillList("colourList",d.colours);
   });
 
-function fill(id,arr){
+function fillList(id,arr){
   document.getElementById(id).innerHTML =
     arr.map(v=>`<option value="${v}">`).join("");
 }
 
-/* PARTY CHANGE */
-party.addEventListener("change",()=>{
-  fetch(API+"?action=partydetails&party="+encodeURIComponent(party.value))
+/******** PARTY CHANGE ********/
+partyInput.addEventListener("change",()=>{
+  const p = partyInput.value.trim();
+  if (!p) return;
+
+  setLoading(locationSelect,"Loading locations...");
+  setLoading(transportSelect,"Loading transport...");
+
+  fetch(API+"?action=partydetails&party="+encodeURIComponent(p))
     .then(r=>r.json())
     .then(d=>{
-      fillSelect(location,d.locations);
-      fillSelect(transport,d.transports);
+      fillSelect(locationSelect,d.locations);
+      fillSelect(transportSelect,d.transports);
     });
 });
 
+function setLoading(sel,text){
+  sel.innerHTML = `<option value="">${text}</option>`;
+}
+
 function fillSelect(sel,arr){
-  sel.innerHTML="<option value=''></option>";
+  sel.innerHTML = `<option value=""></option>`;
   arr.forEach(v=>{
     const o=document.createElement("option");
     o.value=v;o.textContent=v;
@@ -107,64 +120,64 @@ function fillSelect(sel,arr){
   });
 }
 
-/* TOTAL AUTO */
+/******** TOTAL AUTO ********/
 ["weight","rate"].forEach(id=>{
   document.getElementById(id).addEventListener("input",()=>{
     total.value=((+weight.value||0)*(+rate.value||0)).toFixed(2);
   });
 });
 
-/* FORM DATA */
+/******** FORM DATA ********/
 function readForm(){
   return {
     date:date.value,bill:bill.value,party:party.value,
-    location:location.value,rolls:rolls.value,
+    location:locationSelect.value,rolls:rolls.value,
     item:item.value,width:width.value,lotno:lotno.value,
     colour:colour.value,weight:weight.value,rate:rate.value,
-    transport:transport.value,total:total.value,
+    transport:transportSelect.value,total:total.value,
     entry:entryName.value
   };
 }
 
-/* ADD / UPDATE */
+/******** ADD / EDIT ********/
 function addEntry(){
-  if(editIndex===null){
-    entries.push(readForm());
-  }else{
-    entries[editIndex]=readForm();
-    editIndex=null;
-  }
+  if (editIndex===null) entries.push(readForm());
+  else { entries[editIndex]=readForm(); editIndex=null; }
+
   clearForm();
   render();
 }
 
-/* EDIT */
 function editRow(i){
   const e=entries[i];
   editIndex=i;
+
   date.value=e.date;bill.value=e.bill;party.value=e.party;
   rolls.value=e.rolls;item.value=e.item;width.value=e.width;
   lotno.value=e.lotno;colour.value=e.colour;
   weight.value=e.weight;rate.value=e.rate;
   total.value=e.total;entryName.value=e.entry;
 
+  setLoading(locationSelect,"Loading...");
+  setLoading(transportSelect,"Loading...");
+
   fetch(API+"?action=partydetails&party="+encodeURIComponent(e.party))
     .then(r=>r.json())
     .then(d=>{
-      fillSelect(location,d.locations);
-      fillSelect(transport,d.transports);
-      location.value=e.location;
-      transport.value=e.transport;
+      fillSelect(locationSelect,d.locations);
+      fillSelect(transportSelect,d.transports);
+      locationSelect.value=e.location;
+      transportSelect.value=e.transport;
     });
 }
 
-/* DUPLICATE */
+/******** DUPLICATE ********/
 function duplicateRow(i){
   entries.push(JSON.parse(JSON.stringify(entries[i])));
   render();
 }
 
-/* RENDER */
+/******** RENDER ********/
 function render(){
   rows.innerHTML="";
   entries.forEach((e,i)=>{
@@ -180,7 +193,7 @@ function render(){
   });
 }
 
-/* SAVE */
+/******** SAVE ********/
 function saveAll(){
   fetch(API+"?action=savebulk",{
     method:"POST",
