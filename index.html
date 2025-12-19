@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Bill update</title>
+<title>RK Knit Fab — Fabric Entry</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 body{font-family:Inter,Arial;background:#f4f6fb;margin:0}
@@ -16,6 +16,8 @@ th,td{border:1px solid #ddd;padding:6px;text-align:center}
 th{background:#f1f1f1}
 .popup{display:none;position:fixed;top:20px;right:20px;
 background:#111;color:#fff;padding:12px 16px;border-radius:10px}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.grid{grid-template-columns:1fr}}
 </style>
 </head>
 
@@ -24,26 +26,25 @@ background:#111;color:#fff;padding:12px 16px;border-radius:10px}
 <div class="popup" id="popup">Entries saved successfully ✔</div>
 
 <div class="card">
-<h3>Bill Update</h3>
+<h3>Fabric Entry</h3>
 
 <div class="grid">
 <input type="date" id="date">
 <input placeholder="Bill No" id="bill">
 <input list="partyList" placeholder="Party" id="party">
-
 <select id="locationSelect"><option value="">Location</option></select>
 
 <input placeholder="No of Rolls" id="rolls">
 <input list="itemList" placeholder="Item" id="item">
 <input placeholder="Width" id="width">
-<input list="colourList" placeholder="Colour" id="colour">
+<input placeholder="Lot No" id="lotno"><!-- ✅ NEW -->
 
+<input list="colourList" placeholder="Colour" id="colour">
 <input placeholder="Weight" id="weight">
 <input placeholder="Rate" id="rate">
 <input placeholder="Total" id="total" readonly>
 
 <select id="transportSelect"><option value="">Transport</option></select>
-
 <input placeholder="Entry Name" id="entry">
 </div>
 
@@ -55,7 +56,7 @@ background:#111;color:#fff;padding:12px 16px;border-radius:10px}
 <thead>
 <tr>
 <th>Date</th><th>Bill</th><th>Party</th><th>Item</th>
-<th>Weight</th><th>Rate</th><th>Total</th><th>❌</th>
+<th>Lot No</th><th>Weight</th><th>Total</th><th>❌</th>
 </tr>
 </thead>
 <tbody id="rows"></tbody>
@@ -67,7 +68,6 @@ background:#111;color:#fff;padding:12px 16px;border-radius:10px}
 <datalist id="colourList"></datalist>
 
 <script>
-// 🔴 PASTE YOUR WORKER URL
 const API = "https://bill-update-a82a.rkknitfabsachin.workers.dev";
 
 const partyInput = document.getElementById("party");
@@ -128,7 +128,7 @@ function addEntry(){
     rolls:rolls.value,
     item:item.value,
     width:width.value,
-    lotno:"",
+    lotno:lotno.value,   // ✅
     colour:colour.value,
     weight:weight.value,
     rate:rate.value,
@@ -149,8 +149,8 @@ function render(){
         <td>${e.bill}</td>
         <td>${e.party}</td>
         <td>${e.item}</td>
+        <td>${e.lotno}</td>
         <td>${e.weight}</td>
-        <td>${e.rate}</td>
         <td>${e.total}</td>
         <td onclick="entries.splice(${i},1);render()">❌</td>
       </tr>`;
